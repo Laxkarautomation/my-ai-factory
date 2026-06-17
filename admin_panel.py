@@ -1,31 +1,86 @@
 import streamlit as st
 import requests
+import time
 
-# Ngrok ka wahi URL dalo jo tunnel se mila hai
-GPU_SERVER_URL = "https://wobble-roast-numerate.ngrok-free.dev/"
+st.set_page_config(page_title="AI Content Factory", layout="centered")
 
-st.set_page_config(layout="wide")
-st.title("🚀 AI Factory Control Tower")
+st.title("AI Content Factory")
+st.caption("Streamlit → Colab FastAPI → ComfyUI → Final Output")
 
-st.subheader("1. Assets Upload")
-uploaded_video = st.file_uploader("Upload Video", type=['mp4'])
-uploaded_image = st.file_uploader("Upload Photo", type=['jpg', 'png'])
+backend_url = st.text_input(
+    "Colab Ngrok Backend URL",
+    placeholder="https://wobble-roast-numerate.ngrok-free.dev"
+)
 
-if st.button("Upload to GPU"):
-    if uploaded_video and uploaded_image:
-        files = {"video": uploaded_video, "image": uploaded_image}
+video_file = st.file_uploader("Upload video", type=["mp4", "mov", "webm"])
+image_file = st.file_uploader("Upload image", type=["png", "jpg", "jpeg", "webp"])
+
+if st.button("Generate", type="primary"):
+    if not backend_url:
+        st.error("Paste your Ngrok backend URL first.")
+        st.stop()
+
+    if not video_file or not image_file:
+        st.error("Upload both video and image.")
+        st.stop()
+
+    backend_url = backend_url.rstrip("/")
+
+    with st.spinner("Checking backend..."):
         try:
-            # Sab kuch 8188 par bhej rahe hain
-            res = requests.post(f"{GPU_SERVER_URL}/upload", files=files, timeout=60)
-            if res.status_code == 200: st.success("Upload Successful!")
-            else: st.error(f"Failed: {res.status_code}")
-        except Exception as e: st.error(f"Error: {e}")
+            health = requests.get(f"{backend_url}/health", timeout=20)
+            if health.status_code != 200:
+                st.error("Backend health check failed.")
+                st.stop()
+        except Exception as e:
+            st.error(f"Backend not reachable: {e}")
+            st.stop()
 
-st.subheader("2. Run Transformation")
-if st.button("Run Viral Transformation"):
-    try:
-        # Transformation trigger
-        res = requests.post(f"{GPU_SERVER_URL}/prompt", timeout=60)
-        if res.status_code == 200: st.success("Transformation Queued!")
-        else: st.error("Server Error")
-    except Exception as e: st.error(f"Connection Failed: {e}")
+    files = {
+        "video": (video_file.name, video_file.getvalue(), video_file.type),
+        "image": (image_file.name, image_file.getvalue(), image_file.type),
+    }
+
+    with st.spinner("Generating... this can take time on Colab."):
+        try:
+            res = requests.post(
+                f"{backend_url}/generate",
+                files=files,
+                timeout=1200
+            )
+
+            if res.status_code != 200:
+                st.error(res.text)
+                st.stop()
+
+            data = res.json()
+            job_id = data["job_id"]
+
+            result_url = f"{backend_url}/result/{job_id}"
+            output = requests.get(result_url, timeout=300)
+
+            if output.status_code != 200:
+                st.error(output.text)
+                st.stop()
+
+            content_type = output.headers.get("content-type", "")
+
+            st.success("Generation complete.")
+
+            if "video" in content_type or result_url.endswith((".mp4", ".mov", ".webm")):
+                st.video(output.content)
+                st.download_button(
+                    "Download Output",
+                    data=output.content,
+                    file_name="ai_output.mp4"
+                )
+            else:
+                st.image(output.content)
+                st.download_button(
+                    "Download Output",
+                    data=output.content,
+                    file_name="ai_output.png"
+                )
+
+        except Exception as e:
+            st.error(f"Generation failed: {e}")
