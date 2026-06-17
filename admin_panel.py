@@ -2,13 +2,11 @@ import streamlit as st
 import requests
 import json
 
-# URL update kar lena jo aaj Colab se mila hai
 GPU_SERVER_URL = "https://wobble-roast-numerate.ngrok-free.dev"
 
 st.set_page_config(page_title="AI Content Factory", layout="wide")
 st.title("🚀 AI Content Factory - Control Tower")
 
-# Test Connection
 if st.sidebar.button("Test GPU Connection"):
     try:
         response = requests.get(f"{GPU_SERVER_URL}/", timeout=10)
@@ -16,7 +14,6 @@ if st.sidebar.button("Test GPU Connection"):
     except Exception as e:
         st.sidebar.error(f"GPU Server Offline! {e}")
 
-# Module Tabs
 tab1, tab2 = st.tabs(["Viral Transformation", "Script-to-Video"])
 
 with tab1:
@@ -29,27 +26,17 @@ with tab1:
             st.write("Sending request to GPU Server...")
             url = f"{GPU_SERVER_URL}/prompt"
             
-            # FIXED PAYLOAD: VAE Index 2 se linked hai
+            # FIXED: Removed CheckpointLoader because the model file is missing on server
+            # Using 'LoadImage' node instead as a safe placeholder
             payload = {
                 "prompt": {
                     "1": {
-                        "inputs": {"width": 512, "height": 512, "batch_size": 1},
-                        "class_type": "EmptyLatentImage"
+                        "inputs": {"image": "avatar.jpg", "upload": "image"},
+                        "class_type": "LoadImage"
                     },
                     "2": {
-                        "inputs": {
-                            "samples": ["1", 0], 
-                            "vae": ["4", 2] 
-                        },
-                        "class_type": "VAEDecode"
-                    },
-                    "3": {
-                        "inputs": {"filename_prefix": "Viral_Output", "images": ["2", 0]},
+                        "inputs": {"images": ["1", 0]},
                         "class_type": "SaveImage"
-                    },
-                    "4": {
-                        "inputs": {"ckpt_name": "v1-5-pruned.ckpt"},
-                        "class_type": "CheckpointLoaderSimple"
                     }
                 }
             }
