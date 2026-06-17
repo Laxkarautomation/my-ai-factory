@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 
 # Yahan apna wahi ngrok URL paste karo jo tumhein Colab se mila tha
-GPU_SERVER_URL = "https://wobble-roast-numerate.ngrok-free.dev"
+GPU_SERVER_URL = "https://wobble-roast-numerate.ngrok-free.dev/"
 
 st.set_page_config(page_title="AI Content Factory", layout="wide")
 st.title("🚀 AI Content Factory - Control Tower")
